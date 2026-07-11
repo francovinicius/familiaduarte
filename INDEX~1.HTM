@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orçamento da Casa — Jul / Ago / Set 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#2f4a63; --navy-d:#22384b; --ink:#1f2b38; --muted:#6b7c8c;
+    --jul:#4e79a7; --ago:#59a14f; --set:#e15759;
+    --renda:#2e8b57; --desp:#e15759; --saldo:#2f4a63;
+    --line:#e6ecf1; --bg:#f4f7fa; --card:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);padding:20px;line-height:1.4}
+  .wrap{max-width:1200px;margin:0 auto}
+  header.top{background:linear-gradient(135deg,var(--navy),var(--navy-d));color:#fff;border-radius:16px;padding:24px 28px;box-shadow:0 8px 24px rgba(34,56,75,.18)}
+  header.top h1{font-size:24px;font-weight:700}
+  header.top p{opacity:.82;margin-top:6px;font-size:13.5px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:20px 0}
+  .kpi{background:var(--card);border-radius:14px;padding:16px 18px;box-shadow:0 2px 10px rgba(31,43,56,.06);border:1px solid var(--line);border-top:4px solid var(--navy)}
+  .kpi.jul{border-top-color:var(--jul)} .kpi.ago{border-top-color:var(--ago)} .kpi.set{border-top-color:var(--set)}
+  .kpi h3{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .kpi .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin:5px 0}
+  .kpi .row .lab{color:var(--muted)} .kpi .row .num{font-weight:700;font-size:15px}
+  .kpi .num.r{color:var(--renda)} .kpi .num.d{color:var(--desp)}
+  .kpi .saldo{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:14px}
+  .kpi .saldo b{font-size:18px;color:var(--saldo)}
+
+  .grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-bottom:16px}
+  .card{background:var(--card);border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(31,43,56,.06);border:1px solid var(--line)}
+  .card h2{font-size:15px;font-weight:700;margin-bottom:6px;color:var(--navy-d)}
+  .card .hint{font-size:12px;color:var(--muted);font-weight:400}
+  .full{grid-column:1/-1}
+  .chart-box{position:relative;height:340px;margin-top:10px}
+  .chart-box.sm{height:230px}
+
+  .dl-legend{list-style:none;margin-top:12px;display:grid;grid-template-columns:1fr;gap:5px}
+  .dl-legend li{display:flex;align-items:center;font-size:12.5px;padding:3px 0}
+  .dl-legend .sw{width:12px;height:12px;border-radius:3px;margin-right:8px;flex:0 0 auto}
+  .dl-legend .nm{flex:1} .dl-legend .vl{font-weight:700;margin-left:8px}
+  .dl-legend .pc{color:var(--muted);margin-left:8px;min-width:38px;text-align:right}
+
+  .tbl-wrap{overflow-x:auto;margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+  th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--line)}
+  tbody tr.clk{cursor:pointer} tbody tr.clk:hover{background:#eef4fa}
+  tr.total td{font-weight:700;border-top:2px solid var(--navy);border-bottom:none;font-size:14px}
+  .chg{font-weight:600}.chg.neg{color:#2f8f4e}.chg.pos{color:#c0392b}
+  .caret{color:var(--muted);font-size:11px;margin-left:6px}
+  .tap-note{font-size:11.5px;color:var(--muted);margin-top:8px;font-style:italic}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(20,32,44,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+  .overlay.on{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .modal .mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px}
+  .modal h3{font-size:18px;color:var(--navy-d)}
+  .modal .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+  .close{border:none;background:#f0f4f8;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;color:var(--muted);flex:0 0 auto}
+  .close:hover{background:#e2e9f0}
+  .mchart{position:relative;height:200px;margin:8px 0 16px}
+
+  .footer{margin-top:12px;font-size:12px;color:var(--muted);text-align:center}
+
+  @media(max-width:880px){
+    body{padding:14px}
+    .grid{grid-template-columns:1fr}
+    .chart-box{height:300px}
+    header.top h1{font-size:20px}
+  }
+  @media(max-width:520px){
+    .chart-box{height:270px}
+    .kpi .saldo b{font-size:16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Orçamento da Casa &mdash; 3&ordm; Trimestre 2026</h1>
+    <p>Ganhos, despesas e saldo de Julho, Agosto e Setembro &middot; base: aba <strong>Planejamento</strong>. Toque numa categoria para ver os itens.</p>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <!-- Renda x Despesa + Composição -->
+  <div class="grid">
+    <div class="card">
+      <h2>Renda &times; Despesa por m&ecirc;s <span class="hint">(o que entra vs o que sai)</span></h2>
+      <div class="chart-box" id="cb-month"><canvas id="monthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Composi&ccedil;&atilde;o das despesas &mdash; <span id="donutMonth">Setembro</span></h2>
+      <div class="chart-box sm"><canvas id="donutChart"></canvas></div>
+      <ul class="dl-legend" id="donutLegend"></ul>
+    </div>
+  </div>
+
+  <!-- Despesas por categoria -->
+  <div class="card full">
+    <h2>Despesas por categoria &amp; m&ecirc;s <span class="hint">(R$) &mdash; clique para detalhar</span></h2>
+    <div class="chart-box" id="cb-cat" style="height:380px"><canvas id="catChart"></canvas></div>
+    <div class="tbl-wrap">
+      <table id="tblDesp">
+        <thead><tr><th>Categoria</th><th>Julho</th><th>Agosto</th><th>Setembro</th><th>Jul&rarr;Set</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="tap-note">Clique numa linha ou barra para ver os lan&ccedil;amentos da categoria.</div>
+  </div>
+
+  <!-- GANHOS -->
+  <div class="card full" style="margin-top:16px">
+    <h2>Ganhos por categoria &amp; m&ecirc;s <span class="hint">(o que voc&ecirc; recebeu) &mdash; clique para detalhar</span></h2>
+    <div class="chart-box" id="cb-inc" style="height:300px"><canvas id="incChart"></canvas></div>
+    <div class="tbl-wrap">
+      <table id="tblInc">
+        <thead><tr><th>Fonte</th><th>Julho</th><th>Agosto</th><th>Setembro</th><th>Jul&rarr;Set</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="tap-note">Clique numa linha ou barra para ver as fontes de renda.</div>
+    <div class="footer">Valores em reais (R$). Despesa = gastos em dinheiro + mercado. Renda = total geral (dinheiro + benef&iacute;cios). Somas conferidas com a planilha.</div>
+  </div>
+</div>
+
+<!-- Modal drill-down -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="mh">
+      <div><h3 id="mTitle"></h3><div class="sub" id="mSub"></div></div>
+      <button class="close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="mchart"><canvas id="mChart"></canvas></div>
+    <div class="tbl-wrap">
+      <table id="mTbl">
+        <thead><tr><th>Item</th><th>Julho</th><th>Agosto</th><th>Setembro</th><th>Jul&rarr;Set</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const months=['Julho','Agosto','Setembro'];
+const colM=['#4e79a7','#59a14f','#e15759'];
+const fmt=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const kbrl=v=>'R$ '+(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})+'k';
+
+// ---------- DADOS ----------
+const expenseCats=[
+ {n:'Cartões de crédito', items:[
+   {n:'Nubank',   v:[1824.36,1720.00,778.00]},
+   {n:'Bradesco', v:[712.00,152.00,60.00]},
+   {n:'Inter',    v:[459.00,136.00,136.00]},
+ ]},
+ {n:'Moradia & Obra', items:[
+   {n:'TD Construtora', v:[931.00,940.00,903.00]},
+   {n:'Taxa de Obra',   v:[695.00,700.00,597.00]},
+   {n:'Consórcio',      v:[564.00,564.00,564.00]},
+   {n:'Luz',            v:[220.00,220.00,220.00]},
+ ]},
+ {n:'Dízimo',            items:[{n:'Dízimo 10%', v:[1103.83,1167.30,1162.80]}]},
+ {n:'Mercado',           items:[{n:'Mercado', v:[1250.00,1250.00,1250.00]}]},
+ {n:'Imposto de Renda',  items:[{n:'Imposto de Renda', v:[1085.00,1095.00,1105.00]}]},
+ {n:'Gastos pessoais', items:[
+   {n:'Gastos Pessoais Ias',  v:[500.00,500.00,500.00]},
+   {n:'Gastos Pessoais Vini', v:[400.00,400.00,400.00]},
+ ]},
+ {n:'Transporte (gasolina)', items:[{n:'Gasolina', v:[540.00,540.00,540.00]}]},
+ {n:'Telecom & Internet', items:[
+   {n:'Zamix Internet', v:[114.00,114.00,114.00]},
+   {n:'Vivo Ias',       v:[45.00,45.00,45.00]},
+   {n:'Vivo Vini',      v:[38.00,38.00,38.00]},
+ ]},
+];
+const incomeCats=[
+ {n:'Salários & Renda (Dinheiro)', items:[
+   {n:'ViaSoft', v:[3089.53,4190.00,4145.00]},
+   {n:'Criatec', v:[3400.00,3000.00,3000.00]},
+   {n:'Sarton',  v:[2865.81,2800.00,2800.00]},
+ ]},
+ {n:'Benefícios (Outros)', items:[
+   {n:'Swile',           v:[1036.00,1036.00,1036.00]},
+   {n:'ViaSoft Aliment', v:[647.00,647.00,647.00]},
+ ]},
+];
+const donutColors=['#e15759','#4e79a7','#59a14f','#f28e2b','#76b7b2','#edc948','#af7aa1','#9c755f'];
+
+// somas
+const catTotal=(c,i)=>c.items.reduce((s,it)=>s+it.v[i],0);
+const sumSet=(arr,i)=>arr.reduce((s,c)=>s+catTotal(c,i),0);
+const desp=[0,1,2].map(i=>sumSet(expenseCats,i));
+const rend=[0,1,2].map(i=>sumSet(incomeCats,i));
+const saldo=[0,1,2].map(i=>rend[i]-desp[i]);
+
+// ---------- KPIs ----------
+const kpiWrap=document.getElementById('kpis');
+months.forEach((m,i)=>{
+  const cls=['jul','ago','set'][i];
+  kpiWrap.innerHTML+=`<div class="kpi ${cls}"><h3>${m}</h3>
+    <div class="row"><span class="lab">Recebido</span><span class="num r">${fmt(rend[i])}</span></div>
+    <div class="row"><span class="lab">Gasto</span><span class="num d">${fmt(desp[i])}</span></div>
+    <div class="saldo">Sobra no m&ecirc;s: <b>${fmt(saldo[i])}</b></div></div>`;
+});
+const tR=rend.reduce((a,b)=>a+b,0), tD=desp.reduce((a,b)=>a+b,0), tS=tR-tD;
+kpiWrap.innerHTML+=`<div class="kpi"><h3>Trimestre</h3>
+    <div class="row"><span class="lab">Recebido</span><span class="num r">${fmt(tR)}</span></div>
+    <div class="row"><span class="lab">Gasto</span><span class="num d">${fmt(tD)}</span></div>
+    <div class="saldo">Economia total: <b>${fmt(tS)}</b></div></div>`;
+
+Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+Chart.defaults.color='#5a6b7a';
+
+// ---------- Renda x Despesa + saldo ----------
+new Chart(document.getElementById('monthChart'),{
+  data:{labels:months,datasets:[
+    {type:'bar',label:'Recebido',data:rend,backgroundColor:'#2e8b57',borderRadius:5,order:2},
+    {type:'bar',label:'Gasto',data:desp,backgroundColor:'#e15759',borderRadius:5,order:2},
+    {type:'line',label:'Sobra',data:saldo,borderColor:'#2f4a63',backgroundColor:'#2f4a63',
+      borderWidth:3,tension:.3,pointRadius:5,pointBackgroundColor:'#2f4a63',order:1}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)}}},
+    scales:{y:{beginAtZero:true,ticks:{callback:v=>kbrl(v)}}}}
+});
+
+// ---------- Donut composição (mês = Setembro, i=2) ----------
+const dMonth=2;
+const donutData=expenseCats.map(c=>catTotal(c,dMonth));
+const donutTotal=donutData.reduce((a,b)=>a+b,0);
+new Chart(document.getElementById('donutChart'),{
+  type:'doughnut',
+  data:{labels:expenseCats.map(c=>c.n),datasets:[{data:donutData,backgroundColor:donutColors,borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'56%',
+    plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>fmt(c.parsed)+' ('+(c.parsed/donutTotal*100).toFixed(1)+'%)'}}}}
+});
+const dLeg=document.getElementById('donutLegend');
+expenseCats.map((c,idx)=>({n:c.n,v:donutData[idx],col:donutColors[idx]}))
+  .sort((a,b)=>b.v-a.v)
+  .forEach(o=>{dLeg.innerHTML+=`<li><span class="sw" style="background:${o.col}"></span>
+    <span class="nm">${o.n}</span><span class="vl">${fmt(o.v)}</span>
+    <span class="pc">${(o.v/donutTotal*100).toFixed(1)}%</span></li>`;});
+
+// ---------- Barras por categoria (despesas) ----------
+const catChart=new Chart(document.getElementById('catChart'),{
+  type:'bar',
+  data:{labels:expenseCats.map(c=>c.n),
+    datasets:months.map((m,i)=>({label:m,data:expenseCats.map(c=>catTotal(c,i)),backgroundColor:colM[i],borderRadius:4}))},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    onClick:(e,el)=>{if(el.length)openDrill(expenseCats,el[0].index,'despesa');},
+    plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.x)}}},
+    scales:{x:{ticks:{callback:v=>kbrl(v)}},y:{ticks:{font:{size:11}}}}}
+});
+
+// ---------- Barras por fonte de renda ----------
+new Chart(document.getElementById('incChart'),{
+  type:'bar',
+  data:{labels:incomeCats.map(c=>c.n),
+    datasets:months.map((m,i)=>({label:m,data:incomeCats.map(c=>catTotal(c,i)),backgroundColor:colM[i],borderRadius:4}))},
+  options:{responsive:true,maintainAspectRatio:false,
+    onClick:(e,el)=>{if(el.length)openDrill(incomeCats,el[0].index,'renda');},
+    plugins:{legend:{position:'top'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmt(c.parsed.y)}}},
+    scales:{y:{beginAtZero:true,ticks:{callback:v=>kbrl(v)}}}}
+});
+
+// ---------- Tabelas ----------
+function buildTable(tblId,cats,type){
+  const tb=document.querySelector('#'+tblId+' tbody');
+  cats.map((c,idx)=>({idx,c,v:[0,1,2].map(i=>catTotal(c,i))}))
+    .sort((a,b)=>b.v[2]-a.v[2])
+    .forEach(o=>{
+      const d=o.v[2]-o.v[0]; const cls=d<0?'neg':(d>0?'pos':''); const sg=d>0?'+':'';
+      const tr=document.createElement('tr'); tr.className='clk';
+      tr.innerHTML=`<td>${o.c.n}<span class="caret">▸ itens</span></td><td>${fmt(o.v[0])}</td><td>${fmt(o.v[1])}</td><td>${fmt(o.v[2])}</td><td class="chg ${cls}">${sg}${fmt(d)}</td>`;
+      tr.onclick=()=>openDrill(cats,o.idx,type);
+      tb.appendChild(tr);
+    });
+  const T=[0,1,2].map(i=>sumSet(cats,i)); const dT=T[2]-T[0];
+  const clsT=dT<0?'neg':'pos';
+  const tot=document.createElement('tr'); tot.className='total';
+  tot.innerHTML=`<td>TOTAL</td><td>${fmt(T[0])}</td><td>${fmt(T[1])}</td><td>${fmt(T[2])}</td><td class="chg ${clsT}">${dT>0?'+':''}${fmt(dT)}</td>`;
+  tb.appendChild(tot);
+}
+buildTable('tblDesp',expenseCats,'despesa');
+buildTable('tblInc',incomeCats,'renda');
+
+// ---------- Modal drill-down ----------
+let mChart=null;
+function openDrill(cats,idx,type){
+  const c=cats[idx];
+  document.getElementById('mTitle').textContent=c.n;
+  const tot=[0,1,2].map(i=>catTotal(c,i));
+  const isR=type==='renda';
+  document.getElementById('mSub').textContent=(isR?'Fontes de renda':'Lançamentos')+' · Total Set: '+fmt(tot[2]);
+  // tabela itens
+  const tb=document.querySelector('#mTbl tbody'); tb.innerHTML='';
+  c.items.forEach(it=>{
+    const d=it.v[2]-it.v[0]; const cls=d<0?'neg':(d>0?'pos':''); const sg=d>0?'+':'';
+    tb.innerHTML+=`<tr><td>${it.n}</td><td>${fmt(it.v[0])}</td><td>${fmt(it.v[1])}</td><td>${fmt(it.v[2])}</td><td class="chg ${cls}">${sg}${fmt(d)}</td></tr>`;
+  });
+  tb.innerHTML+=`<tr class="total"><td>Total ${c.n}</td><td>${fmt(tot[0])}</td><td>${fmt(tot[1])}</td><td>${fmt(tot[2])}</td><td class="chg ${tot[2]-tot[0]<0?'neg':'pos'}">${tot[2]-tot[0]>0?'+':''}${fmt(tot[2]-tot[0])}</td></tr>`;
+  // mini chart
+  if(mChart)mChart.destroy();
+  mChart=new Chart(document.getElementById('mChart'),{
+    type:'bar',
+    data:{labels:c.items.map(it=>it.n),
+      datasets:months.map((m,i)=>({label:m,data:c.items.map(it=>it.v[i]),backgroundColor:colM[i],borderRadius:4}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{boxWidth:11,font:{size:10}}},
+        tooltip:{callbacks:{label:x=>x.dataset.label+': '+fmt(x.parsed.y)}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>kbrl(v)}},x:{ticks:{font:{size:10}}}}}
+  });
+  document.getElementById('overlay').classList.add('on');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('on');}
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>
